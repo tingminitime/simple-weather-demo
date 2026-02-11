@@ -1,0 +1,175 @@
+name: CI and Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.example'
+      - 'README.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+permissions:
+  contents: write # 允許部署到 gh-pages 分支
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository # 將 repo 下載到 runner 中
+        uses: actions/checkout@v6
+      
+      - name: Check repository # 檢查 repo 狀態
+        run: |
+          echo "📋 作業系統資訊"
+          cat /etc/os-release
+          
+          echo ""
+          echo "📂 目前路徑"
+          pwd
+          
+          echo ""
+          echo "📁 檔案列表"
+          ls -al
+          
+          echo ""
+          echo "🟢 Node.js 版本"
+          node -v
+          
+          echo ""
+          echo "🌿 分支資訊"
+          git branch -vv
+
+      - name: Setup Node.js # 設定 Node.js 環境
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies # 安裝相依套件
+        run: npm ci
+
+      - name: Type check # 執行型別檢查
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - name: Validate Environment Variables
+        run: |
+          # 檢查 variables (可以顯示值)
+          if [ -z "${{ vars.VITE_OPEN_WEATHER_API_URL }}" ]; then
+            echo "❌ Error: VITE_OPEN_WEATHER_API_URL variable is not set"
+            exit 1
+          fi
+
+          # 檢查 secrets (不顯示值)
+          if [ -z "${{ secrets.VITE_OPEN_WEATHER_API_KEY }}" ]; then
+            echo "❌ Error: VITE_OPEN_WEATHER_API_KEY secret is not set"
+            exit 1
+          fi
+
+          echo "✅ All required environment variables are set"
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies and Build
+        env:
+          VITE_OPEN_WEATHER_API_URL: ${{ vars.VITE_OPEN_WEATHER_API_URL }}
+          VITE_OPEN_WEATHER_API_KEY: ${{ secrets.VITE_OPEN_WEATHER_API_KEY }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: dist
+
+  push-to-dockerhub:
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: timini/simple-weather:latest
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy, push-to-dockerhub]
+    if: ${{ success() }}
+    steps:
+      - name: LINE Messaging API Notification
+        run: |
+          echo "執行部署成功通知..."
+
+          AUTHOR="${{ github.actor }}"
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          data='{
+            "to": "'${{ secrets.LINE_USER_ID }}'",
+            "messages":[
+              {
+                "type":"text",
+                "text":"專案：'${{ github.repository }}'\n狀態：\n✅部署成功！\n🆗GitHub Pages 已更新\n🆗Docker Hub 已更新\nWorkflow：\n'"${WORKFLOW_URL}"'\nAuthor：'"${AUTHOR}"'"
+              }
+            ]
+          }'
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.LINE_MESSAGING_API_TOKEN }}" \
+            -d "${data}"\
+            https://api.line.me/v2/bot/message/push
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: [deploy, push-to-dockerhub]
+    if: ${{ failure() }}
+    steps:
+      - name: LINE Messaging API Notification
+        run: |
+          echo "執行部署失敗通知..."
+
+          AUTHOR="${{ github.actor }}"
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          data='{
+            "to": "'${{ secrets.LINE_USER_ID }}'",
+            "messages":[
+              {
+                "type":"text",
+                "text":"專案：'${{ github.repository }}'\n狀態：\n❌部署失敗！請檢查 workflow 以了解詳情\nWorkflow：\n'"${WORKFLOW_URL}"'\nAuthor：'"${AUTHOR}"'"
+              }
+            ]
+          }'
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.LINE_MESSAGING_API_TOKEN }}" \
+            -d "${data}"\
+            https://api.line.me/v2/bot/message/push

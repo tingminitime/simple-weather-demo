@@ -1,0 +1,60 @@
+/* Import fonts using @font-face for html-to-image compatibility */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+TC:wght@200..700&display=swap');
+@import url('https://unpkg.com/open-props/easings.min.css');
+@import "tailwindcss";
+
+@plugin "@iconify/tailwind4";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Inter", "Noto Sans TC", var(--font-sans);
+
+  --color-primary-light: hsl(48, 33%, 97%);
+  --color-primary-dark: hsl(220, 13%, 18%);
+}
+
+@theme {
+  --animate-wiggle: wiggle 1s ease-in-out infinite;
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-6deg); }
+    50% { transform: rotate(6deg); }
+  }
+}
+
+@layer base {
+  html {
+    --theme-icon-fill: hsl(220, 13%, 40%);
+    --theme-icon-fill-hover: hsl(220, 13%, 30%);
+    @apply bg-primary-light;
+  }
+
+  html.dark {
+    --theme-icon-fill: hsl(210 10% 70%);
+    --theme-icon-fill-hover: hsl(210 15% 90%);
+    @apply text-white bg-primary-dark;
+  }
+
+  html, body {
+    @apply font-display h-dvh;
+  }
+
+  input[type="text"] {
+    @apply border-gray-300 dark:border-gray-600;
+
+    &:focus {
+      @apply outline-none ring-0 border-gray-300 dark:border-gray-600;
+    }
+  }
+}
+
+@layer components {
+  .my-link {
+    @apply rounded-lg hover:bg-gray-700/50 transition-all;
+  }
+
+  .my-btn {
+    @apply block cursor-pointer rounded bg-gray-600 px-4 py-1 text-white disabled:cursor-default disabled:bg-gray-600 disabled:opacity-50 dark:bg-gray-400 [&:not(:disabled)]:bg-teal-600 [&:not(:disabled)]:hover:bg-teal-700;
+  }
+}

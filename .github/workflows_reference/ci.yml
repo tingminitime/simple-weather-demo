@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.example'
+      - 'README.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository # 將 repo 下載到 runner 中
+        uses: actions/checkout@v6
+      
+      - name: Check repository # 檢查 repo 狀態
+        run: |
+          echo "📋 作業系統資訊"
+          cat /etc/os-release
+          
+          echo ""
+          echo "📂 目前路徑"
+          pwd
+          
+          echo ""
+          echo "📁 檔案列表"
+          ls -al
+          
+          echo ""
+          echo "🟢 Node.js 版本"
+          node -v
+          
+          echo ""
+          echo "🌿 分支資訊"
+          git branch -vv
+
+      - name: Setup Node.js # 設定 Node.js 環境
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies # 安裝相依套件
+        run: npm ci
+
+      - name: Type check # 執行型別檢查
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
