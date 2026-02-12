@@ -1,0 +1,24 @@
+name: 測試並部署
+
+on:
+  push:
+    branches: [main]
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下載 repo
+        uses: actions/checkout@v6
+
+      - name: 檢查檔案
+        run: |
+          echo "檢查當前路徑: $(pwd)"
+          echo "列出當前路徑的檔案:"
+          ls -al
+
