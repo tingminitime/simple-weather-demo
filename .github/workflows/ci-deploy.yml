@@ -53,3 +53,8 @@ jobs:
 
       - name: 建置專案
         run: npm run build
+
+      - name: 部署到 GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist
