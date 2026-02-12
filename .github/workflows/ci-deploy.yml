@@ -55,6 +55,9 @@ jobs:
         run: npm install
 
       - name: 建置專案
+        env:
+          VITE_OPEN_WEATHER_API_URL: ${{ vars.VITE_OPEN_WEATHER_API_URL }}
+          VITE_OPEN_WEATHER_API_KEY: ${{ secrets.VITE_OPEN_WEATHER_API_KEY }}
         run: npm run build
 
       - name: 部署到 GitHub Pages
