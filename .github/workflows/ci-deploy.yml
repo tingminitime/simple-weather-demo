@@ -22,3 +22,9 @@ jobs:
           echo "列出當前路徑的檔案:"
           ls -al
 
+      - name: TypeScript 型別檢查
+        run: npm run typecheck
+
+      - name: ESLint 檢查
+        run: npm run lint
+
